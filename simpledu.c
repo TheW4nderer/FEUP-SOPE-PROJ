@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <dirent.h>
+#include <math.h>
 #include "args.h"
 #define MAX_COMMANDS 10
 
@@ -35,7 +36,6 @@ void checkArgumensArray(char* argv[MAX_COMMANDS], int numArgs) {
     char* bytes1 = "-b";
     char* bytes2 = "--bytes";
     char* block1 = "-B";
-    char* block2 = "--block-size=";
     char* count_links1 = "-l";
     char* count_links2 = "--count-links";
     char* dereference1 = "-L";
@@ -48,7 +48,10 @@ void checkArgumensArray(char* argv[MAX_COMMANDS], int numArgs) {
 
         else if (strcmp(bytes1, argv[i]) == 0 || strcmp(bytes2, argv[i]) == 0) args.bytes = 1;
 
-        else if (strcmp(block1, argv[i]) == 0 || strcmp(block2, argv[i]) == 0); //change block size
+        else if (strcmp(block1, argv[i]) == 0){
+            args.block_size = atoi(argv[i+1]); 
+            args.bytes = 1;
+        }
 
         else if (strcmp(count_links1, argv[i]) == 0 || strcmp(count_links2, argv[i]) == 0) args.count_links = 1;
 
@@ -64,19 +67,33 @@ void checkArgumensArray(char* argv[MAX_COMMANDS], int numArgs) {
 
 void showRegInfo(char* path){
     struct stat stat_buf;
-    stat(path, &stat_buf);
+    lstat(path, &stat_buf);
+    
+
 
     if (S_ISREG(stat_buf.st_mode)){
-        printf("Total size (bytes): %ld\n", stat_buf.st_size);
-        printf("Total size (blocks of %ld): %ld\n", stat_buf.st_blksize, stat_buf.st_blocks);
+        if (args.bytes){
+            double res =  (( (stat_buf.st_blocks/2) * 1024.0 / (double)args.block_size));
+            res = ceil(res);
+            int r = res;
+
+            printf("%d      %s\n",r, path);
+            //printf("%d\n", args.block_size);
+        }    
+        else    
+            printf("%ld     %s\n", stat_buf.st_blocks/2, path);
+    
     }
 }
 
 
-int searchDir(char* path){
+void getDirInfo(char* path){
     DIR* dir;
-    struct dirent *dirp;
+    struct dirent* dirp;
+    struct stat stat_buf;
     char newpath[BUFFER_SIZE];
+    //pid_t pid;
+
     if ((dir = opendir(path)) == NULL){
         perror(path);
         exit(1);
@@ -86,9 +103,48 @@ int searchDir(char* path){
         strcpy(newpath, path);
         strcat(newpath, "/");
         strcat(newpath, dirp->d_name);
+        lstat(newpath, &stat_buf); //considerando a flag -L ativa
         showRegInfo(newpath);
-        printf("\n");
+        
     }
+}
+
+
+int getDirSize(char* path){
+    DIR* dir;
+    struct dirent* dirp;
+    struct stat stat_buf, curr_dir;
+    char newpath[BUFFER_SIZE];
+    int result = 0;
+    lstat(path, &curr_dir);
+
+    if ((dir = opendir(path)) == NULL){
+        perror(path);
+        exit(1);
+    }
+
+    while ((dirp = readdir(dir)) != NULL){
+        strcpy(newpath, path);
+        strcat(newpath, "/");
+        strcat(newpath, dirp->d_name);
+        lstat(newpath, &stat_buf); //considerando a flag -L ativa
+        result += (stat_buf.st_blocks/2);
+    }    
+
+    if (args.bytes)
+        return ((result - curr_dir.st_blocks/2)*1024)/args.block_size;
+    return result - curr_dir.st_blocks/2;
+}
+
+
+
+int searchDir(char* path){
+    struct stat stat_buf;
+    if (args.all) getDirInfo(path);
+    lstat(path, &stat_buf);
+    int size = getDirSize(path);
+
+    printf("%d         %s\n", size, path);
     
     return 0;
     
@@ -97,30 +153,21 @@ int searchDir(char* path){
 
 int main(int argc, char* argv[], char* envp[]){
 
-    int fd;
+    //int fd;
     if (argc < 2){
         printf("Usage: du -l [path] [-a] [-b] [-B size] [-L] [-S] [--max-depth=N]\n");
         exit(1);
     }
 
-
-    //args.path = argv[2];
-    //struct stat stat_buf;
-
-    //stat(argv[2], &stat_buf); //ignoring symbolic links
     
     checkArgumensArray(argv, argc);
 
-    fd = open("out.txt", O_WRONLY | O_TRUNC | O_SYNC, 0600);
-    if (fd == -1) printf("Error writing in file\n");
+    //fd = open("out.txt", O_WRONLY | O_TRUNC | O_SYNC, 0600);
+    //if (fd == -1) printf("Error writing in file\n");
 
-    dup2(fd, STDOUT_FILENO);
+    //dup2(fd, STDOUT_FILENO);
 
     searchDir(argv[2]);
-
-    //checkArgumensArray(argv, argc,0);
-    //printf("ARGS = {%d, %d, %d, %d, %d, %d, %d}\n", args.all, args.bytes, args.block_size, args.count_links, args.dereference, args.separate_dirs, args.max_depth);
-
 
     return 0;
 }
