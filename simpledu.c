@@ -7,8 +7,10 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <math.h>
+#include <sys/wait.h>
 #include "args.h"
 #define MAX_COMMANDS 10
+#define MAX_SUBDIRS 256
 
 struct Args args = {0,0,1024,0,0,0,-1};
 
@@ -62,7 +64,6 @@ void checkArgumensArray(char* argv[MAX_COMMANDS], int numArgs) {
         else getNumber(argv[i]);
 
     }
-
 }
 
 void showRegInfo(char* path){
@@ -77,13 +78,51 @@ void showRegInfo(char* path){
             res = ceil(res);
             int r = res;
 
-            printf("%d      %s\n",r, path);
+            printf("%d\t%s\n",r, path);
             //printf("%d\n", args.block_size);
         }    
         else    
-            printf("%ld     %s\n", stat_buf.st_blocks/2, path);
+            printf("%ld\t%s\n", stat_buf.st_blocks/2, path);
     
     }
+
+}
+
+/*
+char* subdirs[MAX_SUBDIRS];
+int num_subdirs;*/
+
+char subdirs[MAX_SUBDIRS][BUFFER_SIZE];
+int numSubdirs;
+
+void getSubdirs(char* path){
+    DIR* dir;
+    struct dirent* dirp;
+    struct stat stat_buf;
+    char newpath[BUFFER_SIZE];
+    //int idx = 0;;
+    numSubdirs = 0;
+
+
+    if ((dir = opendir(path)) == NULL){
+        perror(path);
+        exit(1);
+    }
+
+    while ((dirp = readdir(dir)) != NULL){
+        strcpy(newpath, path);
+        strcat(newpath, "/");
+        strcat(newpath, dirp->d_name);
+        if (args.dereference)
+            lstat(newpath, &stat_buf); //considerando a flag -L ativa
+        else stat(newpath, &stat_buf);
+        
+        if (S_ISDIR(stat_buf.st_mode) && strcmp(".", dirp->d_name) && strcmp("..", dirp->d_name)){
+            strcpy(subdirs[numSubdirs], newpath);
+            numSubdirs++;
+        }
+    }    
+
 }
 
 
@@ -92,7 +131,8 @@ void getDirInfo(char* path){
     struct dirent* dirp;
     struct stat stat_buf;
     char newpath[BUFFER_SIZE];
-    //pid_t pid;
+    //char* subdirs[MAX_SUBDIRS];
+    //int idx = 0;
 
     if ((dir = opendir(path)) == NULL){
         perror(path);
@@ -104,9 +144,11 @@ void getDirInfo(char* path){
         strcat(newpath, "/");
         strcat(newpath, dirp->d_name);
         lstat(newpath, &stat_buf); //considerando a flag -L ativa
+
         showRegInfo(newpath);
         
     }
+
 }
 
 
@@ -144,7 +186,7 @@ int searchDir(char* path){
     lstat(path, &stat_buf);
     int size = getDirSize(path);
 
-    printf("%d         %s\n", size, path);
+    printf("%d\t%s\n", size, path);
     
     return 0;
     
@@ -159,14 +201,31 @@ int main(int argc, char* argv[], char* envp[]){
         exit(1);
     }
 
-    
     checkArgumensArray(argv, argc);
 
     //fd = open("out.txt", O_WRONLY | O_TRUNC | O_SYNC, 0600);
     //if (fd == -1) printf("Error writing in file\n");
 
     //dup2(fd, STDOUT_FILENO);
+    pid_t pid;
 
+    //num_subdirs = 0;
+    getSubdirs(argv[2]);
+
+    for (int i = 0; i < numSubdirs; i++){
+        pid = fork();
+        if (pid == 0){ //Processo-filho
+            searchDir(subdirs[i]);
+            exit(0);
+            //printf("%s\n", subdirs[i]);
+        }
+        else{
+            waitpid(-1, NULL, 0);
+        }
+    }
+
+
+    //searchDir(argv[2]);
     searchDir(argv[2]);
 
     return 0;
