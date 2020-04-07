@@ -11,6 +11,8 @@
 #include "args.h"
 #define MAX_COMMANDS 10
 #define MAX_SUBDIRS 256
+#define READ 0 
+#define WRITE 1 
 
 
 struct Args args = {0,0,1024,0,0,0,-1, 0};
@@ -71,8 +73,6 @@ void showRegInfo(char* path){
     struct stat stat_buf;
     lstat(path, &stat_buf);
     
-
-
     if (S_ISREG(stat_buf.st_mode)){
         if (args.block_size_changed){
             double res =  (( (stat_buf.st_blocks/2) * 1024.0 / (double)args.block_size));
@@ -86,23 +86,21 @@ void showRegInfo(char* path){
             printf("%ld\t%s\n", stat_buf.st_blocks/2, path);
     
     }
+}
+
+
+void showDirInfo(char* path, int size){
 
 }
 
 /*
-char* subdirs[MAX_SUBDIRS];
-int num_subdirs;*/
 
-char subdirs[MAX_SUBDIRS][BUFFER_SIZE];
-int numSubdirs = 0;
-
-void getSubdirs(char* path){
+void processDir(char* path){
     DIR* dir;
     struct dirent* dirp;
     struct stat stat_buf;
     char newpath[BUFFER_SIZE];
-    //int idx = 0;;
-    //int dirs;
+    pid_t pid;
 
 
     if ((dir = opendir(path)) == NULL){
@@ -119,14 +117,20 @@ void getSubdirs(char* path){
         else stat(newpath, &stat_buf);
         
         if (S_ISDIR(stat_buf.st_mode) && strcmp(".", dirp->d_name) && strcmp("..", dirp->d_name)){
-            //getSubdirs(newpath);
-            strcpy(subdirs[numSubdirs], newpath);
-            numSubdirs++;
-            getSubdirs(newpath);
+            int fd[2];
+            pipe(fd);
+            pid = fork();
+            if (pid == 0){  //Processo-Filho
+                getDirSize(path);
+            } 
+        }
+        else{
+            searchDir();
         }
     }    
 
 }
+*/
 
 
 void getDirInfo(char* path){
@@ -155,12 +159,14 @@ void getDirInfo(char* path){
 }
 
 
+
 int getDirSize(char* path){
     DIR* dir;
     struct dirent* dirp;
     struct stat stat_buf, curr_dir;
     char newpath[BUFFER_SIZE];
     int result = 0;
+    pid_t pid;
     if (args.dereference)
         lstat(path, &curr_dir);
     else stat(path, &curr_dir);
@@ -175,6 +181,32 @@ int getDirSize(char* path){
         strcat(newpath, "/");
         strcat(newpath, dirp->d_name);
         lstat(newpath, &stat_buf); //considerando a flag -L ativa
+        if (S_ISDIR(stat_buf.st_mode) && strcmp(".", dirp->d_name) && strcmp("..", dirp->d_name)){
+            int fd[2];
+            pipe(fd);
+            pid = fork();
+            if (pid == 0){      //Processo-Filho
+                int size = getDirSize(newpath);
+                size += stat_buf.st_blocks/2;
+                close(fd[READ]); 
+                write(fd[WRITE], &size, sizeof(int)); 
+                close(fd[WRITE]);
+                exit(0);
+            }
+            else if (pid > 0){  //Processo-Pai
+                waitpid(-1, NULL, 0);
+                int size_received;
+                close(fd[WRITE]);
+                read(fd[READ], &size_received, sizeof(int));
+                result += size_received;
+            }
+        }
+        else
+        {
+            
+        }
+        
+        
         //if (args.separate_dirs && S_ISDIR(stat_buf.st_mode)) continue;
         result += (stat_buf.st_blocks/2);
     }    
@@ -223,6 +255,7 @@ int main(int argc, char* argv[], char* envp[]){
         pid = fork();
         if (pid == 0){ //Processo-filho
             searchDir(subdirs[i]);
+
             exit(0);
         }
         else{
@@ -231,7 +264,7 @@ int main(int argc, char* argv[], char* envp[]){
     }
 
 
-    searchDir(argv[2]);
+    
 
     return 0;
 }
