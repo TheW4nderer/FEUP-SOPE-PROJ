@@ -12,6 +12,7 @@
 #define MAX_COMMANDS 10
 #define MAX_SUBDIRS 256
 
+
 struct Args args = {0,0,1024,0,0,0,-1, 0};
 
 
@@ -93,7 +94,7 @@ char* subdirs[MAX_SUBDIRS];
 int num_subdirs;*/
 
 char subdirs[MAX_SUBDIRS][BUFFER_SIZE];
-int numSubdirs;
+int numSubdirs = 0;
 
 void getSubdirs(char* path){
     DIR* dir;
@@ -101,7 +102,7 @@ void getSubdirs(char* path){
     struct stat stat_buf;
     char newpath[BUFFER_SIZE];
     //int idx = 0;;
-    numSubdirs = 0;
+    //int dirs;
 
 
     if ((dir = opendir(path)) == NULL){
@@ -118,8 +119,10 @@ void getSubdirs(char* path){
         else stat(newpath, &stat_buf);
         
         if (S_ISDIR(stat_buf.st_mode) && strcmp(".", dirp->d_name) && strcmp("..", dirp->d_name)){
+            //getSubdirs(newpath);
             strcpy(subdirs[numSubdirs], newpath);
             numSubdirs++;
+            getSubdirs(newpath);
         }
     }    
 
@@ -210,11 +213,12 @@ int main(int argc, char* argv[], char* envp[]){
     //if (fd == -1) printf("Error writing in file\n");
 
     //dup2(fd, STDOUT_FILENO);
+    //int max_subdirs = MAX_SUBDIRS;
+    //if (args.max_depth != -1) max_subdirs = args.max_depth;
     pid_t pid;
 
-    //num_subdirs = 0;
     getSubdirs(argv[2]);
-
+    
     for (int i = 0; i < numSubdirs; i++){
         pid = fork();
         if (pid == 0){ //Processo-filho
