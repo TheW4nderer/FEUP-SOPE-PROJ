@@ -12,7 +12,7 @@
 #define MAX_COMMANDS 10
 #define MAX_SUBDIRS 256
 
-struct Args args = {0,0,1024,0,0,0,-1};
+struct Args args = {0,0,1024,0,0,0,-1, 0};
 
 
 
@@ -52,7 +52,7 @@ void checkArgumensArray(char* argv[MAX_COMMANDS], int numArgs) {
 
         else if (strcmp(block1, argv[i]) == 0){
             args.block_size = atoi(argv[i+1]); 
-            args.bytes = 1;
+            args.block_size_changed = 1;
         }
 
         else if (strcmp(count_links1, argv[i]) == 0 || strcmp(count_links2, argv[i]) == 0) args.count_links = 1;
@@ -73,7 +73,7 @@ void showRegInfo(char* path){
 
 
     if (S_ISREG(stat_buf.st_mode)){
-        if (args.bytes){
+        if (args.block_size_changed){
             double res =  (( (stat_buf.st_blocks/2) * 1024.0 / (double)args.block_size));
             res = ceil(res);
             int r = res;
@@ -158,7 +158,9 @@ int getDirSize(char* path){
     struct stat stat_buf, curr_dir;
     char newpath[BUFFER_SIZE];
     int result = 0;
-    lstat(path, &curr_dir);
+    if (args.dereference)
+        lstat(path, &curr_dir);
+    else stat(path, &curr_dir);
 
     if ((dir = opendir(path)) == NULL){
         perror(path);
@@ -170,10 +172,11 @@ int getDirSize(char* path){
         strcat(newpath, "/");
         strcat(newpath, dirp->d_name);
         lstat(newpath, &stat_buf); //considerando a flag -L ativa
+        //if (args.separate_dirs && S_ISDIR(stat_buf.st_mode)) continue;
         result += (stat_buf.st_blocks/2);
     }    
 
-    if (args.bytes)
+    if (args.block_size_changed)
         return ((result - curr_dir.st_blocks/2)*1024)/args.block_size;
     return result - curr_dir.st_blocks/2;
 }
@@ -217,7 +220,6 @@ int main(int argc, char* argv[], char* envp[]){
         if (pid == 0){ //Processo-filho
             searchDir(subdirs[i]);
             exit(0);
-            //printf("%s\n", subdirs[i]);
         }
         else{
             waitpid(-1, NULL, 0);
@@ -225,7 +227,6 @@ int main(int argc, char* argv[], char* envp[]){
     }
 
 
-    //searchDir(argv[2]);
     searchDir(argv[2]);
 
     return 0;

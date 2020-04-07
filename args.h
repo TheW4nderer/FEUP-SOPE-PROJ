@@ -8,5 +8,6 @@ struct Args {
     int dereference;
     int separate_dirs;
     int max_depth; //-1 if no depth limit
+    int block_size_changed;
     char path[BUFFER_SIZE];
 };
