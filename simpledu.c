@@ -8,14 +8,16 @@
 #include <dirent.h>
 #include <sys/wait.h>
 #include <signal.h>
+
 #include "args.h"
+#include "log.h"
 #define MAX_COMMANDS 10
 #define MAX_SUBDIRS 256
 #define READ 0 
 #define WRITE 1 
 
-
 struct Args args = {0,0,1024,0,0,0,-1, 0};
+
 
 
 int ceiling(double num) {
@@ -157,17 +159,17 @@ int getDirSize(char* path, char* original){
         showRegInfo(original);
         return 0;
     }
-    
+    /*
     struct sigaction action;
     action.sa_handler = sigint_handler;
     action.sa_flags = 0;
     sigemptyset(&action.sa_mask);
-
+    
     if (sigaction(SIGINT, &action, NULL) < 0){
         fprintf(stderr, "Unable to install handler\n");
         exit(1);
     }
-
+    */
 
     if ((dir = opendir(path)) == NULL){
         perror(path);
@@ -178,6 +180,7 @@ int getDirSize(char* path, char* original){
         strcpy(newpath, path);
         strcat(newpath, "/");
         strcat(newpath, dirp->d_name);
+        pid_t status;
         if (!args.dereference)
             lstat(newpath, &stat_buf); //considerando a flag -L ativa
         else stat(newpath, &stat_buf);
@@ -195,7 +198,8 @@ int getDirSize(char* path, char* original){
                 exit(0);
             }
             else if (pid > 0){  //Processo-Pai
-                waitpid(-1, NULL, 0);
+                waitpid(-1, &status, 0);
+                //regExit(status);
                 int size_received;
                 close(fd[WRITE]);
                 read(fd[READ], &size_received, sizeof(int));
@@ -240,26 +244,17 @@ int getDirSize(char* path, char* original){
 
 
 int main(int argc, char* argv[], char* envp[]){
-
+    startLog();
+    regCreate(argc, argv);
     if (argc < 2){
         printf("Usage: du -l [path] [-a] [-b] [-B size] [-L] [-S] [--max-depth=N]\n");
         exit(1);
     }
 
     checkArgumensArray(argv, argc);
-
-    //fd = open("out.txt", O_WRONLY | O_TRUNC | O_SYNC, 0600);
-    //if (fd == -1) printf("Error writing in file\n");
-
-    //dup2(fd, STDOUT_FILENO);
-    //int max_subdirs = MAX_SUBDIRS;
-    //if (args.max_depth != -1) max_subdirs = args.max_depth;
-
-    
-    //struct stat stat_buf;
-
     getDirSize(argv[2], argv[2]);
     
+    regExit(0);
     
 
     return 0;
