@@ -6,7 +6,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <dirent.h>
-#include <math.h>
 #include <sys/wait.h>
 #include "args.h"
 #define MAX_COMMANDS 10
@@ -17,6 +16,14 @@
 
 struct Args args = {0,0,1024,0,0,0,-1, 0};
 
+
+int ceiling(double num) {
+    int inum = (int)num;
+    if (num == (float)inum) {
+        return inum;
+    }
+    return inum + 1;
+}
 
 
 void getNumber(char* cmd){
@@ -69,6 +76,25 @@ void checkArgumensArray(char* argv[MAX_COMMANDS], int numArgs) {
     }
 }
 
+int countChars(char* path){
+    int lenght = strlen(path);
+    int count = 0;
+    for (int i = 0; i < lenght; i++){
+        if (path[i] == '/') count++;
+    }
+    return count;
+}
+
+
+int checkValidPath(char* originalPath, char* current_path){
+    int numSubdirs = countChars(current_path) - countChars(originalPath);
+    if (args.max_depth != -1){
+        if (numSubdirs > args.max_depth) return 0;
+    }
+    return 1;
+}
+
+
 void showRegInfo(char* path){
     struct stat stat_buf;
     if (!args.dereference)
@@ -78,7 +104,7 @@ void showRegInfo(char* path){
     if (S_ISREG(stat_buf.st_mode) || S_ISLNK(stat_buf.st_mode)){
         if (args.block_size_changed){
             double res =  (( (stat_buf.st_blocks/2) * 1024.0 / (double)args.block_size));
-            res = ceil(res);
+            res = ceiling(res);
             int r = res;
             printf("%d\t%s\n",r, path);
         }    
@@ -89,6 +115,10 @@ void showRegInfo(char* path){
             printf("%ld\t%s\n", stat_buf.st_blocks/2, path);
     
     }
+}
+
+void sigint_handler(int signo){
+
 }
 
 
@@ -104,13 +134,15 @@ int getDirSize(char* path, char* original){
         lstat(path, &curr_dir);
     else stat(path, &curr_dir);
 
+    //struct sigaction action:
+    //action.sa_handler = 
+
     if ((dir = opendir(path)) == NULL){
         perror(path);
         exit(1);
     }
 
     while ((dirp = readdir(dir)) != NULL){
-        //printf("%s\n", dirp->d_name);
         strcpy(newpath, path);
         strcat(newpath, "/");
         strcat(newpath, dirp->d_name);
@@ -141,13 +173,14 @@ int getDirSize(char* path, char* original){
         else if (S_ISREG(stat_buf.st_mode) || S_ISLNK(stat_buf.st_mode))
         {
             if (args.all)
-                showRegInfo(newpath);
+                if (checkValidPath(original, newpath)) showRegInfo(newpath);
             //if (args.separate_dirs && S_ISDIR(stat_buf.st_mode)) continue;
 
             if (args.block_size_changed){
-                double res =  (( (stat_buf.st_blocks/2) * 1024.0 / (double)args.block_size));
-                res = ceil(res);
-                result += res;
+                /*double res =  (( (stat_buf.st_blocks/2) * 1024.0 / (double)args.block_size));
+                res = ceiling(res);
+                result += res;*/
+                result += stat_buf.st_blocks/2;
             }
             if (args.bytes){
                 result += stat_buf.st_size;
@@ -156,16 +189,22 @@ int getDirSize(char* path, char* original){
                 result += (stat_buf.st_blocks/2);
         }
     }    
-
+    double res = 0;
     if (args.bytes){
         result += curr_dir.st_size;
+        res = result;
     }
     else if (args.block_size_changed){
-        result += ((curr_dir.st_blocks/2)*1024)/args.block_size;
-    }
-    else
         result += curr_dir.st_blocks/2;
-    printf("%d\t%s\n", result, path);
+        res = result * 1024 / (double) args.block_size;
+        res = (double) ceiling(res);
+    }
+    else{
+        result += curr_dir.st_blocks/2;
+        res = result;
+    }    
+    if (checkValidPath(original, path))    
+        printf("%d\t%s\n", (int) res, path);
 
     return result;
 }
@@ -192,9 +231,7 @@ int main(int argc, char* argv[], char* envp[]){
     //struct stat stat_buf;
 
     getDirSize(argv[2], argv[2]);
-     
-
-
+    
     
 
     return 0;
