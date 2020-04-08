@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <sys/wait.h>
+#include <signal.h>
 #include "args.h"
 #define MAX_COMMANDS 10
 #define MAX_SUBDIRS 256
@@ -118,7 +119,21 @@ void showRegInfo(char* path){
 }
 
 void sigint_handler(int signo){
+    int pid = getpid();
+    char terminate;
+    printf("Entering SIGINT handler\n");
+    kill(-2, SIGTSTP);
+    printf("Do you want to terminate? (y/n)");
+    scanf("%c", &terminate);
 
+    if (terminate == 'y') kill(pid, SIGTERM);
+
+    else if (terminate == 'n') kill(-2, SIGCONT);
+
+    else printf("Invalid!\n");
+
+    printf("Exiting SIGINT handler\n");
+    
 }
 
 
@@ -126,7 +141,7 @@ void sigint_handler(int signo){
 int getDirSize(char* path, char* original){
     DIR* dir;
     struct dirent* dirp;
-    struct stat stat_buf, curr_dir;
+    struct stat stat_buf, curr_dir, original_file;
     char newpath[BUFFER_SIZE];
     int result = 0;
     pid_t pid;
@@ -134,8 +149,25 @@ int getDirSize(char* path, char* original){
         lstat(path, &curr_dir);
     else stat(path, &curr_dir);
 
-    //struct sigaction action:
-    //action.sa_handler = 
+    if (!args.dereference)
+        lstat(original, &original_file);
+    else stat(original, &original_file);
+
+    if (S_ISREG(original_file.st_mode) || S_ISLNK(original_file.st_mode)){
+        showRegInfo(original);
+        return 0;
+    }
+    
+    struct sigaction action;
+    action.sa_handler = sigint_handler;
+    action.sa_flags = 0;
+    sigemptyset(&action.sa_mask);
+
+    if (sigaction(SIGINT, &action, NULL) < 0){
+        fprintf(stderr, "Unable to install handler\n");
+        exit(1);
+    }
+
 
     if ((dir = opendir(path)) == NULL){
         perror(path);
@@ -174,12 +206,8 @@ int getDirSize(char* path, char* original){
         {
             if (args.all)
                 if (checkValidPath(original, newpath)) showRegInfo(newpath);
-            //if (args.separate_dirs && S_ISDIR(stat_buf.st_mode)) continue;
 
             if (args.block_size_changed){
-                /*double res =  (( (stat_buf.st_blocks/2) * 1024.0 / (double)args.block_size));
-                res = ceiling(res);
-                result += res;*/
                 result += stat_buf.st_blocks/2;
             }
             if (args.bytes){
