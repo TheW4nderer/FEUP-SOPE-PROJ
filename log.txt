@@ -1,0 +1,12 @@
+0.12 - 20954 - CREATE - ./du -l testing -a
+-0.72 - 20957 - EXIT - 0
+0.12 - 20954 - CREATE - ./du -l testing -a
+-0.50 - 20956 - EXIT - 0
+0.12 - 20954 - CREATE - ./du -l testing -a
+-0.74 - 20958 - EXIT - 0
+0.12 - 20954 - CREATE - ./du -l testing -a
+-0.39 - 20955 - EXIT - 0
+0.12 - 20954 - CREATE - ./du -l testing -a
+-0.78 - 20959 - EXIT - 0
+0.12 - 20954 - CREATE - ./du -l testing -a
+0.69 - 20954 - EXIT - 0

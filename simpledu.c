@@ -140,6 +140,8 @@ void sigint_handler(int signo){
 
 
 
+
+
 int getDirSize(char* path, char* original){
     DIR* dir;
     struct dirent* dirp;
@@ -195,7 +197,9 @@ int getDirSize(char* path, char* original){
                 close(fd[READ]);
                 write(fd[WRITE], &size, sizeof(int)); 
                 close(fd[WRITE]);
-                exit(0);
+                regExit(0);
+                //exit(0);
+                //return 0;
             }
             else if (pid > 0){  //Processo-Pai
                 waitpid(-1, &status, 0);
@@ -245,7 +249,9 @@ int getDirSize(char* path, char* original){
 
 int main(int argc, char* argv[], char* envp[]){
     startLog();
+
     regCreate(argc, argv);
+    printf ("%d\n", getpid());
     if (argc < 2){
         printf("Usage: du -l [path] [-a] [-b] [-B size] [-L] [-S] [--max-depth=N]\n");
         exit(1);
@@ -253,6 +259,8 @@ int main(int argc, char* argv[], char* envp[]){
 
     checkArgumensArray(argv, argc);
     getDirSize(argv[2], argv[2]);
+
+
     
     regExit(0);
     

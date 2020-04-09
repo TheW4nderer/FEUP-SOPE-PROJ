@@ -42,13 +42,14 @@ void regCreate(int argc, char* argv[]){
     Log log;
     createLog(CREATE, &log);
     for (int i = 0; i < argc; i++){
+        strcat(log.info,argv[i]);
         if (i != argc-1){
-            strcat(log.info,argv[i]);
+            //strcat(log.info,argv[i]);
             strcat(log.info," ");
         }
-        else{
+        /*else{
             strcat(log.info,argv[i]);
-        }
+        }*/
     }
     writeToFile(&log);
 }
@@ -58,4 +59,5 @@ void regExit(int status){
     createLog(EXIT, &log);
     sprintf(log.info, "%d",status);
     writeToFile(&log);
+    exit(status);
 }
