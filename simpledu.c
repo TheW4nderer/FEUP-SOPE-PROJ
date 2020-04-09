@@ -17,7 +17,7 @@
 #define WRITE 1 
 
 struct Args args = {0,0,1024,0,0,0,-1, 0};
-
+pid_t groupID;
 
 
 int ceiling(double num) {
@@ -110,35 +110,36 @@ void showRegInfo(char* path){
             res = ceiling(res);
             int r = res;
             printf("%d\t%s\n",r, path);
+            regEntry(r,path);
         }    
         else if (args.bytes){
             printf("%ld\t%s\n", stat_buf.st_size, path);
+            regEntry(stat_buf.st_size, path);
         }
-        else    
+        else{
             printf("%ld\t%s\n", stat_buf.st_blocks/2, path);
+            regEntry(stat_buf.st_blocks/2, path);
+        }
     
     }
 }
 
 void sigint_handler(int signo){
-    int pid = getpid();
     char terminate;
     printf("Entering SIGINT handler\n");
-    kill(-2, SIGTSTP);
+    kill(-groupID, SIGTSTP);
     printf("Do you want to terminate? (y/n)");
     scanf("%c", &terminate);
 
-    if (terminate == 'y') kill(pid, SIGTERM);
+    if (terminate == 'y') kill(-groupID, SIGTERM);
 
-    else if (terminate == 'n') kill(-2, SIGCONT);
+    else if (terminate == 'n') kill(-groupID, SIGCONT);
 
     else printf("Invalid!\n");
 
     printf("Exiting SIGINT handler\n");
     
 }
-
-
 
 
 
@@ -161,17 +162,6 @@ int getDirSize(char* path, char* original, int argc, char* argv[]){
         showRegInfo(original);
         return 0;
     }
-    /*
-    struct sigaction action;
-    action.sa_handler = sigint_handler;
-    action.sa_flags = 0;
-    sigemptyset(&action.sa_mask);
-    
-    if (sigaction(SIGINT, &action, NULL) < 0){
-        fprintf(stderr, "Unable to install handler\n");
-        exit(1);
-    }
-    */
 
     if ((dir = opendir(path)) == NULL){
         perror(path);
@@ -196,18 +186,18 @@ int getDirSize(char* path, char* original, int argc, char* argv[]){
                 int size = getDirSize(newpath, original, argc, argv);
                 if (args.separate_dirs) size = 0;
                 close(fd[READ]);
-                write(fd[WRITE], &size, sizeof(int)); 
+                write(fd[WRITE], &size, sizeof(int));
+                regSendPipe(size); 
                 close(fd[WRITE]);
                 regExit(0);
-                //exit(0);
-                //return 0;
             }
             else if (pid > 0){  //Processo-Pai
                 waitpid(-1, &status, 0);
-                //regExit(status);
                 int size_received;
                 close(fd[WRITE]);
                 read(fd[READ], &size_received, sizeof(int));
+                regRecvPipe(size_received);
+                close(fd[READ]);
                 result += size_received;
             }
         }
@@ -240,9 +230,11 @@ int getDirSize(char* path, char* original, int argc, char* argv[]){
         result += curr_dir.st_blocks/2;
         res = result;
     }    
-    if (checkValidPath(original, path))    
+    if (checkValidPath(original, path)){   
         printf("%d\t%s\n", (int) res, path);
-
+        regEntry(res, path);
+    }
+        
     return result;
 }
 
@@ -250,19 +242,39 @@ int getDirSize(char* path, char* original, int argc, char* argv[]){
 
 int main(int argc, char* argv[], char* envp[]){
     startLog();
-
     regCreate(argc, argv);
-    printf ("%d\n", getpid());
+
     if (argc < 2){
         printf("Usage: du -l [path] [-a] [-b] [-B size] [-L] [-S] [--max-depth=N]\n");
         exit(1);
     }
 
     checkArgumensArray(argv, argc);
-    getDirSize(argv[2], argv[2], argc, argv);
+
+    struct sigaction action;
+    action.sa_handler = sigint_handler;
+    action.sa_flags = 0;
+    sigemptyset(&action.sa_mask);
+    
+    if (sigaction(SIGINT, &action, NULL) < 0){
+        fprintf(stderr, "Unable to install handler\n");
+        exit(1);
+    }
+
+    pid_t pid = fork();
+
+    if (pid > 0){
+        groupID = pid;
+        waitpid(-1,NULL, 0);
+    }
+
+    else if (pid == 0){ //Processo-Filho
+        setpgid(getpid(), getpid());
+        getDirSize(argv[2], argv[2], argc, argv);
+        regExit(0);
+    }
 
     regExit(0);
     
-
     return 0;
 }

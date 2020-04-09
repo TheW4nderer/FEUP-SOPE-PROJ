@@ -1,5 +1,0 @@
-4        ./simpledu.c
-0        ./out.txt
-4        ./args.h
-16        ./du
-32         .

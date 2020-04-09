@@ -1,10 +1,8 @@
 #include "log.h"
 
 FILE* log_file;
-clock_t start_time;
 
 void startLog(){
-    start_time = clock();
     setenv("LOG_FILENAME","log.txt",0);
     
     log_file = fopen(getenv("LOG_FILENAME"),"a");
@@ -26,7 +24,7 @@ void writeToFile(Log *log){
         case SEND_PIPE: action = "SEND_PIPE"; break;
         case ENTRY: action = "ENTRY"; break;
     }
-    fprintf(log_file, "%.2f - %d - %s - %s\n", log->instant, log->pid, action, log->info);
+    fprintf(log_file, "%.2f - %d - %-10s - %s\n", log->instant, log->pid, action, log->info);
     setbuf(log_file,NULL);
 }
 
@@ -35,7 +33,7 @@ void createLog(Action action, Log* log){
     log->instant = (current_time)/(CLOCKS_PER_SEC / (double) 1000);
     log->pid = getpid();
     log->action = action;
-    strncpy(log->info,"",sizeof(""));
+    strncpy(log->info,"Command: ",sizeof("Command: "));
 }
 
 void regCreate(int argc, char* argv[]){
@@ -44,12 +42,8 @@ void regCreate(int argc, char* argv[]){
     for (int i = 0; i < argc; i++){
         strcat(log.info,argv[i]);
         if (i != argc-1){
-            //strcat(log.info,argv[i]);
             strcat(log.info," ");
         }
-        /*else{
-            strcat(log.info,argv[i]);
-        }*/
     }
     writeToFile(&log);
 }
@@ -57,7 +51,31 @@ void regCreate(int argc, char* argv[]){
 void regExit(int status){
     Log log;
     createLog(EXIT, &log);
-    sprintf(log.info, "%d",status);
+    sprintf(log.info, "Exit Status: %d",status);
     writeToFile(&log);
     exit(status);
+}
+
+
+void regRecvPipe(int msg){
+    Log log;
+    createLog(RECV_PIPE, &log);
+    sprintf(log.info, "Received Size: %d",msg);
+    writeToFile(&log);
+}
+
+
+void regSendPipe(int msg){
+    Log log;
+    createLog(SEND_PIPE, &log);
+    sprintf(log.info,"Sent Size: %d",msg);
+    writeToFile(&log);
+}
+
+
+void regEntry(int size, char* path){
+    Log log;
+    createLog(ENTRY, &log);
+    sprintf(log.info,"Size: %d\tPath: %s", (int) size, path);
+    writeToFile(&log);
 }

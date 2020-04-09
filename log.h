@@ -30,3 +30,9 @@ void createLog(Action action, Log* log);
 void regCreate(int argc, char* argv[]);
 
 void regExit(int status);
+
+void regRecvPipe(int msg);
+
+void regSendPipe(int msg);
+
+void regEntry(int size, char* path);
