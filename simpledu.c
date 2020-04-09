@@ -142,7 +142,7 @@ void sigint_handler(int signo){
 
 
 
-int getDirSize(char* path, char* original){
+int getDirSize(char* path, char* original, int argc, char* argv[]){
     DIR* dir;
     struct dirent* dirp;
     struct stat stat_buf, curr_dir, original_file;
@@ -192,7 +192,8 @@ int getDirSize(char* path, char* original){
             pipe(fd);
             pid = fork();
             if (pid == 0){      //Processo-Filho
-                int size = getDirSize(newpath, original);
+                regCreate(argc, argv);
+                int size = getDirSize(newpath, original, argc, argv);
                 if (args.separate_dirs) size = 0;
                 close(fd[READ]);
                 write(fd[WRITE], &size, sizeof(int)); 
@@ -258,10 +259,8 @@ int main(int argc, char* argv[], char* envp[]){
     }
 
     checkArgumensArray(argv, argc);
-    getDirSize(argv[2], argv[2]);
+    getDirSize(argv[2], argv[2], argc, argv);
 
-
-    
     regExit(0);
     
 

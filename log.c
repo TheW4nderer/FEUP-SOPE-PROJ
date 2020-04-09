@@ -27,12 +27,12 @@ void writeToFile(Log *log){
         case ENTRY: action = "ENTRY"; break;
     }
     fprintf(log_file, "%.2f - %d - %s - %s\n", log->instant, log->pid, action, log->info);
+    setbuf(log_file,NULL);
 }
 
 void createLog(Action action, Log* log){
     clock_t current_time = clock();
-    //printf("%f\n",(current_time)/(CLOCKS_PER_SEC / (double) 1000));
-    log->instant = (current_time - start_time)/(CLOCKS_PER_SEC / (double) 1000);
+    log->instant = (current_time)/(CLOCKS_PER_SEC / (double) 1000);
     log->pid = getpid();
     log->action = action;
     strncpy(log->info,"",sizeof(""));
