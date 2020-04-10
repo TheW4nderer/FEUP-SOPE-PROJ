@@ -125,15 +125,23 @@ void showRegInfo(char* path){
 }
 
 void sigint_handler(int signo){
+    regRecvSignal(signo);
     char terminate;
     printf("Entering SIGINT handler\n");
-    kill(-groupID, SIGTSTP);
+    kill(-groupID, SIGSTOP);
+    regSendSignal(SIGSTOP,getpid());
     printf("Do you want to terminate? (y/n)");
     scanf("%c", &terminate);
 
-    if (terminate == 'y') kill(-groupID, SIGTERM);
+    if (terminate == 'y' || terminate == 'Y'){
+        regSendSignal(SIGTERM,getpid());
+        kill(-groupID, SIGTERM);      
+    }
 
-    else if (terminate == 'n') kill(-groupID, SIGCONT);
+    else if (terminate == 'n' || terminate == 'N'){
+        regSendSignal(SIGCONT, getpid());
+        kill(-groupID, SIGCONT);
+    }
 
     else printf("Invalid!\n");
 
@@ -141,6 +149,13 @@ void sigint_handler(int signo){
     
 }
 
+void sigcont_handler(int signo){
+    regRecvSignal(signo);
+}
+
+void sigterm_handler(int signo){
+    regRecvSignal(signo);
+}
 
 
 int getDirSize(char* path, char* original, int argc, char* argv[]){
@@ -183,6 +198,27 @@ int getDirSize(char* path, char* original, int argc, char* argv[]){
             pid = fork();
             if (pid == 0){      //Processo-Filho
                 regCreate(argc, argv);
+
+                struct sigaction action_cont;
+                action_cont.sa_handler = sigcont_handler;
+                action_cont.sa_flags = 0;
+                sigemptyset(&action_cont.sa_mask);
+
+                struct sigaction action_term;
+                action_term.sa_handler = sigterm_handler;
+                action_term.sa_flags = 0;
+                sigemptyset(&action_term.sa_mask);
+
+                if (sigaction(SIGCONT, &action_cont, NULL) < 0){
+                fprintf(stderr, "Unable to install handler\n");
+                exit(1);
+                }
+
+                if (sigaction(SIGTERM, &action_term, NULL) < 0){
+                fprintf(stderr, "Unable to install handler\n");
+                exit(1);
+                }
+
                 int size = getDirSize(newpath, original, argc, argv);
                 if (args.separate_dirs) size = 0;
                 close(fd[READ]);
@@ -192,7 +228,7 @@ int getDirSize(char* path, char* original, int argc, char* argv[]){
                 regExit(0);
             }
             else if (pid > 0){  //Processo-Pai
-                waitpid(-1, &status, 0);
+                while (waitpid(-1, &status, 0)>0);
                 int size_received;
                 close(fd[WRITE]);
                 read(fd[READ], &size_received, sizeof(int));
@@ -235,6 +271,7 @@ int getDirSize(char* path, char* original, int argc, char* argv[]){
         regEntry(res, path);
     }
         
+   
     return result;
 }
 
@@ -242,19 +279,21 @@ int getDirSize(char* path, char* original, int argc, char* argv[]){
 
 int main(int argc, char* argv[], char* envp[]){
     startLog();
-    regCreate(argc, argv);
-
+   
     if (argc < 2){
         printf("Usage: du -l [path] [-a] [-b] [-B size] [-L] [-S] [--max-depth=N]\n");
         exit(1);
     }
 
     checkArgumensArray(argv, argc);
+    
+    regCreate(argc, argv);
 
     struct sigaction action;
     action.sa_handler = sigint_handler;
     action.sa_flags = 0;
     sigemptyset(&action.sa_mask);
+
     
     if (sigaction(SIGINT, &action, NULL) < 0){
         fprintf(stderr, "Unable to install handler\n");
@@ -269,6 +308,25 @@ int main(int argc, char* argv[], char* envp[]){
     }
 
     else if (pid == 0){ //Processo-Filho
+        struct sigaction action_cont;
+        action_cont.sa_handler = sigcont_handler;
+        action_cont.sa_flags = 0;
+        sigemptyset(&action_cont.sa_mask);
+
+        struct sigaction action_term;
+        action_term.sa_handler = sigterm_handler;
+        action_term.sa_flags = 0;
+        sigemptyset(&action_term.sa_mask);
+
+        if (sigaction(SIGCONT, &action_cont, NULL) < 0){
+            fprintf(stderr, "Unable to install handler\n");
+            exit(1);
+        }
+
+        if (sigaction(SIGTERM, &action_term, NULL) < 0){
+            fprintf(stderr, "Unable to install handler\n");
+            exit(1);
+        }
         setpgid(getpid(), getpid());
         getDirSize(argv[2], argv[2], argc, argv);
         regExit(0);

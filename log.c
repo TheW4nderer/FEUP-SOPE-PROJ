@@ -24,7 +24,7 @@ void writeToFile(Log *log){
         case SEND_PIPE: action = "SEND_PIPE"; break;
         case ENTRY: action = "ENTRY"; break;
     }
-    fprintf(log_file, "%.2f - %d - %-10s - %s\n", log->instant, log->pid, action, log->info);
+    fprintf(log_file, "%-5.2f - %-5d - %-11s - %s\n", log->instant, log->pid, action, log->info);
     setbuf(log_file,NULL);
 }
 
@@ -48,12 +48,29 @@ void regCreate(int argc, char* argv[]){
     writeToFile(&log);
 }
 
+
 void regExit(int status){
     Log log;
     createLog(EXIT, &log);
     sprintf(log.info, "Exit Status: %d",status);
     writeToFile(&log);
     exit(status);
+}
+
+
+void regRecvSignal(int signal){
+    Log log;
+    createLog(RECV_SIGNAL, &log);
+    sprintf(log.info, "Received Signal: %d",signal);
+    writeToFile(&log);
+}
+
+
+void regSendSignal(int signal, pid_t pid){
+    Log log;
+    createLog(SEND_SIGNAL, &log);
+    sprintf(log.info, "Sent Signal %d to Process %d",signal,pid);
+    writeToFile(&log);
 }
 
 

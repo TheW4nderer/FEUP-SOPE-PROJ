@@ -31,6 +31,10 @@ void regCreate(int argc, char* argv[]);
 
 void regExit(int status);
 
+void regRecvSignal(int signal);
+
+void regSendSignal(int signal, pid_t pid);
+
 void regRecvPipe(int msg);
 
 void regSendPipe(int msg);
