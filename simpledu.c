@@ -8,7 +8,6 @@
 #include <dirent.h>
 #include <sys/wait.h>
 #include <signal.h>
-
 #include "args.h"
 #include "log.h"
 #define MAX_COMMANDS 10
@@ -105,7 +104,16 @@ void showRegInfo(char* path){
     else stat(path, &stat_buf);
     
     if (S_ISREG(stat_buf.st_mode) || S_ISLNK(stat_buf.st_mode)){
-        if (args.block_size_changed){
+        if (args.block_size_changed && args.bytes){
+            int bytes = stat_buf.st_size;
+            double res =  ((bytes / (double)args.block_size));
+            res = ceiling(res);
+            int r = res;
+            printf("%d\t%s\n",r, path);
+            regEntry(r,path);
+        }
+
+        else if (args.block_size_changed){
             double res =  (( (stat_buf.st_blocks/2) * 1024.0 / (double)args.block_size));
             res = ceiling(res);
             int r = res;
@@ -253,11 +261,18 @@ int getDirSize(char* path, char* original, int argc, char* argv[]){
         }
     }    
     double res = 0;
-    if (args.bytes){
+    if (args.block_size_changed && args.bytes){
+        result += curr_dir.st_size;
+        res =  ((result / (double)args.block_size));
+        res = (double) ceiling(res);
+    }
+
+    else if (args.bytes){
         result += curr_dir.st_size;
         res = result;
     }
     else if (args.block_size_changed){
+
         result += curr_dir.st_blocks/2;
         res = result * 1024 / (double) args.block_size;
         res = (double) ceiling(res);
