@@ -250,12 +250,17 @@ int getDirSize(char* path, char* original, int argc, char* argv[]){
             if (args.all)
                 if (checkValidPath(original, newpath)) showRegInfo(newpath);
 
-            if (args.block_size_changed){
+            if (args.block_size_changed && !args.bytes){
                 result += stat_buf.st_blocks/2;
             }
-            if (args.bytes){
+            if (args.bytes && !args.block_size_changed){
                 result += stat_buf.st_size;
             }
+
+            if (args.block_size_changed && args.bytes) {
+                result += stat_buf.st_size;
+            }
+
             else if (!args.bytes && !args.block_size_changed)
                 result += (stat_buf.st_blocks/2);
         }
@@ -263,7 +268,7 @@ int getDirSize(char* path, char* original, int argc, char* argv[]){
     double res = 0;
     if (args.block_size_changed && args.bytes){
         result += curr_dir.st_size;
-        res =  ((result / (double)args.block_size));
+        res =  (result / (double)args.block_size);
         res = (double) ceiling(res);
     }
 
