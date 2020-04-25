@@ -7,7 +7,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include <time.h>
+#include "timer.h"
+
 
 
 #define BUFLENGHT 256
@@ -15,11 +16,7 @@
 
 int nsecs;
 char fifoname[BUFLENGHT];
-
-double elapsedTime(){ // em MILISSEGUNDOS
-    clock_t start = clock();
-    return  start / (CLOCKS_PER_SEC / (double) 1000.0); 
-}
+double elapsed_time;
 
 
 void checkArgumentsArray(char** args, int numArgs){
@@ -27,6 +24,7 @@ void checkArgumentsArray(char** args, int numArgs){
     strcpy(fifoname, args[3]);
     //fifoname é o canal publico
 }
+
 
 void * thr_func(void* arg){
     char* fifo = arg;
@@ -38,13 +36,34 @@ void * thr_func(void* arg){
     int duration = rand() % 25 +1; //duration between [1, 25]
 
     sprintf(message,"[%d, %ld, %d]", (int)getpid(), (long)pthread_self(), duration);
+    write(fd, message, BUFLENGHT);
     close(fd);
-    pthread_exit(message);
+
+    char pfifo[BUFLENGHT]; //private fifo
+    char current_string[BUFLENGHT];
+    sprintf(current_string, "%d ", getpid());
+    strcpy(pfifo, current_string);
+    strcat(pfifo, ".");
+    sprintf(current_string, "%ld ", pthread_self());
+    strcat(pfifo, current_string);
+
+    if (mkfifo(pfifo, 0660) < 0) exit(1); //Error creating fifo
+    int fd_fifo = open(pfifo, O_RDONLY);
+    if (fd_fifo < 0) exit(2);
+    char server_message[BUFLENGHT];
+
+    read(fd_fifo, &server_message, BUFLENGHT);
+
+    close(fd_fifo);
+
+    pthread_exit(server_message);
 }
 
 
 int main(int argc, char* argv[]) {
     checkArgumentsArray(argv, argc);
+
+    startClock();
 
     pthread_t threads[MAX_THREADS];
     int t = 0;
@@ -60,13 +79,14 @@ int main(int argc, char* argv[]) {
     while ((double) elapsedTime() < (double) nsecs){
         pthread_create(&threads[t], NULL, thr_func, &fifo);
         pthread_join(threads[t], &status);
-        printf ("%s\n", (char *)status);
+        if (!strcmp((char*) status, "")) printf("Empty string\n");
+        else printf ("%s\n", (char *)status);
+
         usleep(2000000);
         t++;
         printf("Seconds elapsed %f\n", elapsedTime());
     }
     pthread_exit(0);
 
-    //while(1) printf("%lf\n", elapsedTime()/1000);
     
 }

@@ -1,0 +1,4 @@
+
+void startClock();
+
+double elapsedTime();
