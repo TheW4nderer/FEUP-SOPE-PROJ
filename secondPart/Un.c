@@ -25,38 +25,56 @@ void checkArgumentsArray(char** args, int numArgs){
     //fifoname é o canal publico
 }
 
+int sequential = 1;
+
+
 
 void * thr_func(void* arg){
-    char* fifo = arg;
+    char* fifo = (char *) arg;
 
     int fd = open(fifo, O_WRONLY);
+    if (fd == -1) return NULL;
+    
     char message[BUFLENGHT];
 
     //generate duration randomly
     int duration = rand() % 25 +1; //duration between [1, 25]
 
-    sprintf(message,"[%d, %ld, %d]", (int)getpid(), (long)pthread_self(), duration);
-    write(fd, message, BUFLENGHT);
+    sprintf(message,"[%d, %d, %ld, %d]", sequential,(int)getpid(), (long)pthread_self(), duration);
+    printf("Pedido enviado: %s\n", message);
+    write(fd, &message, BUFLENGHT);
     close(fd);
 
-    char pfifo[BUFLENGHT]; //private fifo
+    char pfifo[BUFLENGHT] = "/tmp/"; //private fifo
     char current_string[BUFLENGHT];
-    sprintf(current_string, "%d ", getpid());
-    strcpy(pfifo, current_string);
-    strcat(pfifo, ".");
-    sprintf(current_string, "%ld ", pthread_self());
+    sprintf(current_string, "%d", getpid());
     strcat(pfifo, current_string);
+    strcat(pfifo, ".");
+    sprintf(current_string, "%ld", pthread_self());
+    strcat(pfifo, current_string);
+    printf("%s\n", pfifo);
 
     if (mkfifo(pfifo, 0660) < 0) exit(1); //Error creating fifo
     int fd_fifo = open(pfifo, O_RDONLY);
+    
     if (fd_fifo < 0) exit(2);
     char server_message[BUFLENGHT];
 
+    int num, pid, idPlace;
+    long tid;
+    float time;
     read(fd_fifo, &server_message, BUFLENGHT);
+
+    printf("%s\n", server_message);
+
+    sscanf(server_message, "[%d, %d, %ld, %d, %d, %f]", &num, &pid, &tid, &duration, &idPlace, &time);
 
     close(fd_fifo);
 
-    pthread_exit(server_message);
+    unlink(pfifo);
+
+    return NULL;
+
 }
 
 
@@ -71,22 +89,22 @@ int main(int argc, char* argv[]) {
     char fifo[BUFLENGHT] = "";
     strcat(fifo ,fifoname);
 
-    void* status;
-
     srand(time(NULL));
+
+    nsecs = atoi(argv[2]);
 
 
     while ((double) elapsedTime() < (double) nsecs){
         pthread_create(&threads[t], NULL, thr_func, &fifo);
-        pthread_join(threads[t], &status);
-        if (!strcmp((char*) status, "")) printf("Empty string\n");
-        else printf ("%s\n", (char *)status);
-
-        usleep(2000000);
+        pthread_join(threads[t], NULL);
+        usleep(2000000); //tempo em ms
         t++;
+        sequential++;
         printf("Seconds elapsed %f\n", elapsedTime());
+        //printf("Max seconds %d\n", nsecs);
     }
-    pthread_exit(0);
+    printf("The end !!!\n");
 
+    return 0;
     
 }
