@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include "timer.h"
+#include "log.h"
 
 
 
@@ -41,8 +42,8 @@ void * thr_func(void* arg){
     int duration = rand() % 25 +1; //duration between [1, 25]
 
     sprintf(message,"[%d, %d, %ld, %d]", sequential,(int)getpid(), (long)pthread_self(), duration);
-    printf("Pedido enviado: %s\n", message);
     write(fd, &message, BUFLENGHT);
+    display(sequential, (int) getpid(), (long) pthread_self(), -1, duration, IWANT); //Envio do pedido
     close(fd);
 
     char pfifo[BUFLENGHT] = "/tmp/"; //private fifo
@@ -63,11 +64,16 @@ void * thr_func(void* arg){
     int num, pid, idPlace;
     long tid;
     float time;
-    read(fd_fifo, &server_message, BUFLENGHT);
+    if(read(fd_fifo, &server_message, BUFLENGHT) < 0){
+        display(sequential, getpid(), pthread_self(), duration, -1, FAILD);
+    }
 
-    printf("%s\n", server_message);
 
     sscanf(server_message, "[%d, %d, %ld, %d, %d, %f]", &num, &pid, &tid, &duration, &idPlace, &time);
+
+    if (duration == -1 && idPlace == -1) display(num, pid, tid, duration, idPlace, CLOSD); //Casa de banho fechada
+
+    else display(num, pid, tid, duration, idPlace, IAMIN);
 
     close(fd_fifo);
 
@@ -96,12 +102,11 @@ int main(int argc, char* argv[]) {
 
     while ((double) elapsedTime() < (double) nsecs){
         pthread_create(&threads[t], NULL, thr_func, &fifo);
-        pthread_join(threads[t], NULL);
+        //pthread_join(threads[t], NULL);
         usleep(2000000); //tempo em ms
         t++;
         sequential++;
-        printf("Seconds elapsed %f\n", elapsedTime());
-        //printf("Max seconds %d\n", nsecs);
+
     }
     printf("The end !!!\n");
 

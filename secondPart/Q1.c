@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include "timer.h"
+#include "log.h"
 
 #define BUFLENGHT 256
 #define MAX_THREADS 100
@@ -22,8 +23,10 @@ void * thr_func(void* arg){
     char msg[BUFLENGHT] , pids[BUFLENGHT], tids[BUFLENGHT], fifoname[BUFLENGHT] = "/tmp/";
     strcpy(msg, (char*) arg);
     int fd_private;
+    int closed = 0;
 
     sscanf(msg, "[ %d, %d, %ld, %d]", &seq, &pid, &tid, &duration);
+    display(seq, pid, tid, duration, curr_place, RECVD);
 
     sprintf(pids, "%d", pid);
     strcat(fifoname, pids);
@@ -40,11 +43,16 @@ void * thr_func(void* arg){
     char message[BUFLENGHT];
     if ((double) elapsedTime() + duration * 1e-3 < (double) nsecs){
         sprintf(message, "[%d, %d, %ld, %d, %d]", sequential++, getpid(), pthread_self(), duration, curr_place++);
-        printf("%s\n", message);
+        display(seq, pid,tid, duration, curr_place, ENTER);
     }
-    else sprintf(message ,"[%d, %d, %ld, %d, %d, %f]", 0, 0, (long)0, 0, 0, (float) nsecs);
+    else{ 
+        closed = 1;
+        sprintf(message ,"[%d, %d, %ld, %d, %d, %d]", sequential, getpid(), (long)pthread_self(), -1, -1, curr_place);
+        display(sequential, getpid(), (long)pthread_self(), -1, -1,TOOLATE);
+    }    
 
     usleep(duration*1000);
+    if (closed == 0) display(sequential, getpid(), (long) pthread_self(), duration, curr_place, TIMUP);
     write(fd_private, &message, BUFLENGHT);
     close(fd_private);
 
@@ -80,7 +88,7 @@ int main(int argc, char* argv[]){
     while(elapsedTime() < nsecs){
         if (read(fd, &public_msg, BUFLENGHT) > 0 && public_msg[0] == '['){;
             pthread_create(&tid, NULL, thr_func,  &public_msg);
-            pthread_join(tid, NULL);
+            //pthread_join(tid, NULL);
         }
     }
 
