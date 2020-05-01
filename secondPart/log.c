@@ -39,7 +39,6 @@ void toStringOperation(operation oper, char res[]){
         default: break;
     }
 
-    //return res;
 }
 
 void display(int i, int pid, long tid, int duration, int place, operation oper){

@@ -23,9 +23,10 @@ void * thr_func(void* arg){
     char msg[BUFLENGHT] , pids[BUFLENGHT], tids[BUFLENGHT], fifoname[BUFLENGHT] = "/tmp/";
     strcpy(msg, (char*) arg);
     int fd_private;
-    int closed = 0;
+    int closed = 0, place_rcv;
 
-    sscanf(msg, "[ %d, %d, %ld, %d]", &seq, &pid, &tid, &duration);
+
+    sscanf(msg, "[ %d, %d, %ld, %d, %d]", &seq, &pid, &tid, &duration, &place_rcv);
     display(seq, pid, tid, duration, curr_place, RECVD);
 
     sprintf(pids, "%d", pid);
@@ -43,21 +44,24 @@ void * thr_func(void* arg){
     if ((double) (elapsedTime() + duration * 1e-3) < (double) nsecs){
         sprintf(message, "[%d, %d, %ld, %d, %d]", sequential++, getpid(), pthread_self(), duration, curr_place++);
         display(seq, pid,tid, duration, curr_place, ENTER);
+        //printf("%s\n", message);
     }
     else{ 
         closed = 1;
-        sprintf(message ,"[%d, %d, %ld, %d, %d]", sequential, getpid(), (long) pthread_self(), -1, -1);
+        duration = -1;
+        curr_place = -1;
+        sprintf(message ,"[%d, %d, %ld, %d, %d]", sequential, getpid(), (long) pthread_self(), duration, curr_place);
+        printf("%s\n", message);
         display(sequential, getpid(), (long) pthread_self(), -1, -1, TOOLATE);
     }    
 
     usleep(duration*1000);
-    if (closed == 0) display(sequential, getpid(), (long) pthread_self(), duration, curr_place, TIMUP);
+    if (closed == 0) display(sequential, getpid(), pthread_self(), duration, curr_place, TIMUP);
     write(fd_private, &message, BUFLENGHT);
     close(fd_private);
-
-
     return NULL;
 }
+
 
 int main(int argc, char* argv[]){
     if (argc != 4){
@@ -97,9 +101,8 @@ int main(int argc, char* argv[]){
     close(fd);
 
     if (unlink(fifo) < 0) printf("Unable to unlink FIFO\n");
-    //return 0;
 
-    pthread_exit(0);
+    exit(0);
 
 
 }

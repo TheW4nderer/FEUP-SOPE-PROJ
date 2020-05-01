@@ -13,7 +13,6 @@
 
 
 #define BUFLENGHT 256
-#define MAX_THREADS 100
 
 int nsecs;
 char fifoname[BUFLENGHT];
@@ -32,7 +31,7 @@ int closed = 0;
 
 void * thr_func(void* arg){
     char* fifo = (char *) arg;
-    int duration = rand() % 25 +1; //duration between [1, 25]
+    int duration = rand() % 50 +1; //duration between [1, 50]
     int fd = open(fifo, O_WRONLY);
     if (fd == -1) 
     {
@@ -42,10 +41,9 @@ void * thr_func(void* arg){
     }    
     
     char message[BUFLENGHT];
+    int idPlace = -1;
 
-    //generate duration randomly
-
-    sprintf(message,"[%d, %d, %ld, %d, -1]", sequential,(int)getpid(), (long)pthread_self(), duration);
+    sprintf(message,"[%d, %d, %ld, %d, %d]", sequential,getpid(), pthread_self(), duration, idPlace);
     char pfifo[BUFLENGHT] = "/tmp/"; //private fifo
     char current_string[BUFLENGHT];
     sprintf(current_string, "%d", getpid());
@@ -60,7 +58,7 @@ void * thr_func(void* arg){
     }
 
     write(fd, &message, BUFLENGHT);
-    display(sequential, getpid(), pthread_self(), duration, -1, IWANT); //Envio do pedido
+    display(sequential, getpid(), pthread_self(), duration, idPlace, IWANT); //Envio do pedido
     close(fd);
 
     int fd_fifo = open(pfifo, O_RDONLY);
@@ -68,7 +66,7 @@ void * thr_func(void* arg){
     if (fd_fifo < 0) return NULL;
     char server_message[BUFLENGHT];
 
-    int num, pid, idPlace;
+    int num, pid;
     long tid;
     if(read(fd_fifo, &server_message, BUFLENGHT) < 0){
         display(sequential, getpid(), pthread_self(), duration, -1, FAILD);
@@ -98,7 +96,7 @@ int main(int argc, char* argv[]) {
 
     startClock();
 
-    pthread_t threads[MAX_THREADS];
+    pthread_t thread;
     int t = 0;
 
     char fifo[BUFLENGHT] = "";
@@ -111,9 +109,9 @@ int main(int argc, char* argv[]) {
 
 
     while ((double) elapsedTime() < (double) nsecs){
-        pthread_create(&threads[t], NULL, thr_func, &fifo);
-        pthread_detach(threads[t]);
-        usleep(2000000); //tempo em ms
+        pthread_create(&thread, NULL, thr_func, &fifo);
+        pthread_detach(thread);
+        usleep(20000); //tempo em ms
         t++;
         sequential++;
         if (closed) break;
@@ -121,7 +119,7 @@ int main(int argc, char* argv[]) {
     }
     printf("The end !!!\n");
 
-    //return 0;
-    pthread_exit(0);
+    return 0;
+    //pthread_exit(0);
     
 }
