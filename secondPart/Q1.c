@@ -15,7 +15,7 @@
 
 int nsecs;
 int curr_place = 1;
-int sequential = 0;
+//int sequential = 0;
 
 void * thr_func(void* arg){
     int seq, pid, duration;
@@ -37,27 +37,26 @@ void * thr_func(void* arg){
     
 
     if ((fd_private = open(fifoname, O_WRONLY)) < 0){
-        display(sequential, pid, tid, -1, -1, GAVUP);
+        display(seq, pid, tid, -1, -1, GAVUP);
     }
 
     char message[BUFLENGHT];
     if ((double) (elapsedTime() + duration * 1e-3) < (double) nsecs){
-        sprintf(message, "[%d, %d, %ld, %d, %d]", sequential++, getpid(), pthread_self(), duration, curr_place++);
+        sprintf(message, "[%d, %d, %ld, %d, %d]", seq, getpid(), pthread_self(), duration, curr_place++);
         display(seq, pid,tid, duration, curr_place, ENTER);
-        //printf("%s\n", message);
+        
     }
     else{ 
         closed = 1;
         duration = -1;
         curr_place = -1;
-        sprintf(message ,"[%d, %d, %ld, %d, %d]", sequential, getpid(), (long) pthread_self(), duration, curr_place);
+        sprintf(message ,"[%d, %d, %ld, %d, %d]", seq, getpid(), (long) pthread_self(), duration, curr_place);
         printf("%s\n", message);
-        display(sequential, getpid(), (long) pthread_self(), -1, -1, TOOLATE);
+        display(seq, getpid(), (long) pthread_self(), -1, -1, TOOLATE);
     }    
-
-    usleep(duration*1000);
-    if (closed == 0) display(sequential, getpid(), pthread_self(), duration, curr_place, TIMUP);
     write(fd_private, &message, BUFLENGHT);
+    usleep(duration*1000);
+    if (closed == 0) display(seq, getpid(), pthread_self(), duration, curr_place, TIMUP);
     close(fd_private);
     return NULL;
 }
