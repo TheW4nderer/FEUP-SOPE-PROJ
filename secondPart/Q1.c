@@ -33,22 +33,21 @@ void * thr_func(void* arg){
     sprintf(tids, "%ld" ,tid);
     strcat(fifoname, ".");
     strcat(fifoname, tids);
-    printf("%s\n", fifoname);
     
 
-    while ((fd_private = open(fifoname, O_WRONLY)) < 0){
-        printf("Failed to open FIFO\n");
+    if ((fd_private = open(fifoname, O_WRONLY)) < 0){
+        display(sequential, pid, tid, -1, -1, GAVUP);
     }
 
     char message[BUFLENGHT];
-    if ((double) elapsedTime() + duration * 1e-3 < (double) nsecs){
+    if ((double) (elapsedTime() + duration * 1e-3) < (double) nsecs){
         sprintf(message, "[%d, %d, %ld, %d, %d]", sequential++, getpid(), pthread_self(), duration, curr_place++);
         display(seq, pid,tid, duration, curr_place, ENTER);
     }
     else{ 
         closed = 1;
-        sprintf(message ,"[%d, %d, %ld, %d, %d, %d]", sequential, getpid(), (long)pthread_self(), -1, -1, curr_place);
-        display(sequential, getpid(), (long)pthread_self(), -1, -1,TOOLATE);
+        sprintf(message ,"[%d, %d, %ld, %d, %d]", sequential, getpid(), (long) pthread_self(), -1, -1);
+        display(sequential, getpid(), (long) pthread_self(), -1, -1, TOOLATE);
     }    
 
     usleep(duration*1000);
@@ -68,6 +67,9 @@ int main(int argc, char* argv[]){
     int fd;
     pthread_t tid;
     startClock();
+    initializeTime();
+
+    srand(time(NULL));
 
     char* fifo = argv[3];
     nsecs = atoi(argv[2]);
@@ -88,13 +90,14 @@ int main(int argc, char* argv[]){
     while(elapsedTime() < nsecs){
         if (read(fd, &public_msg, BUFLENGHT) > 0 && public_msg[0] == '['){;
             pthread_create(&tid, NULL, thr_func,  &public_msg);
-            //pthread_join(tid, NULL);
+            pthread_detach(tid);
         }
     }
 
     close(fd);
 
     if (unlink(fifo) < 0) printf("Unable to unlink FIFO\n");
+    //return 0;
 
     pthread_exit(0);
 

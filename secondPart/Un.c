@@ -27,25 +27,25 @@ void checkArgumentsArray(char** args, int numArgs){
 }
 
 int sequential = 1;
-
+int closed = 0;
 
 
 void * thr_func(void* arg){
     char* fifo = (char *) arg;
-
+    int duration = rand() % 25 +1; //duration between [1, 25]
     int fd = open(fifo, O_WRONLY);
-    if (fd == -1) return NULL;
+    if (fd == -1) 
+    {
+        display(sequential, getpid(), pthread_self(), duration, -1, FAILD);
+        return NULL;
+
+    }    
     
     char message[BUFLENGHT];
 
     //generate duration randomly
-    int duration = rand() % 25 +1; //duration between [1, 25]
 
-    sprintf(message,"[%d, %d, %ld, %d]", sequential,(int)getpid(), (long)pthread_self(), duration);
-    write(fd, &message, BUFLENGHT);
-    display(sequential, (int) getpid(), (long) pthread_self(), -1, duration, IWANT); //Envio do pedido
-    close(fd);
-
+    sprintf(message,"[%d, %d, %ld, %d, -1]", sequential,(int)getpid(), (long)pthread_self(), duration);
     char pfifo[BUFLENGHT] = "/tmp/"; //private fifo
     char current_string[BUFLENGHT];
     sprintf(current_string, "%d", getpid());
@@ -53,25 +53,34 @@ void * thr_func(void* arg){
     strcat(pfifo, ".");
     sprintf(current_string, "%ld", pthread_self());
     strcat(pfifo, current_string);
-    printf("%s\n", pfifo);
 
-    if (mkfifo(pfifo, 0660) < 0) exit(1); //Error creating fifo
+    if (mkfifo(pfifo, 0660) < 0) {
+        display(sequential, getpid(), pthread_self(), duration, -1, FAILD);
+        return NULL;
+    }
+
+    write(fd, &message, BUFLENGHT);
+    display(sequential, getpid(), pthread_self(), duration, -1, IWANT); //Envio do pedido
+    close(fd);
+
     int fd_fifo = open(pfifo, O_RDONLY);
     
-    if (fd_fifo < 0) exit(2);
+    if (fd_fifo < 0) return NULL;
     char server_message[BUFLENGHT];
 
     int num, pid, idPlace;
     long tid;
-    float time;
     if(read(fd_fifo, &server_message, BUFLENGHT) < 0){
         display(sequential, getpid(), pthread_self(), duration, -1, FAILD);
     }
 
 
-    sscanf(server_message, "[%d, %d, %ld, %d, %d, %f]", &num, &pid, &tid, &duration, &idPlace, &time);
+    sscanf(server_message, "[%d, %d, %ld, %d, %d]", &num, &pid, &tid, &duration, &idPlace);
 
-    if (duration == -1 && idPlace == -1) display(num, pid, tid, duration, idPlace, CLOSD); //Casa de banho fechada
+    if (duration == -1 && idPlace == -1){ 
+        display(num, pid, tid, duration, idPlace, CLOSD); //Casa de banho fechada
+        closed = 1;
+    }    
 
     else display(num, pid, tid, duration, idPlace, IAMIN);
 
@@ -96,20 +105,23 @@ int main(int argc, char* argv[]) {
     strcat(fifo ,fifoname);
 
     srand(time(NULL));
+    initializeTime();
 
     nsecs = atoi(argv[2]);
 
 
     while ((double) elapsedTime() < (double) nsecs){
         pthread_create(&threads[t], NULL, thr_func, &fifo);
-        //pthread_join(threads[t], NULL);
+        pthread_detach(threads[t]);
         usleep(2000000); //tempo em ms
         t++;
         sequential++;
+        if (closed) break;
 
     }
     printf("The end !!!\n");
 
-    return 0;
+    //return 0;
+    pthread_exit(0);
     
 }

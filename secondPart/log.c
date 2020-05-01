@@ -1,6 +1,10 @@
 #include "log.h"
 
+long initialTime;
 
+void initializeTime(){
+    initialTime = time(NULL);
+}
 
 void toStringOperation(operation oper, char res[]){
     //char res[BUFLENGHT];
@@ -40,7 +44,8 @@ void toStringOperation(operation oper, char res[]){
 
 void display(int i, int pid, long tid, int duration, int place, operation oper){
     char stringOperation[BUFLENGHT];
+    long curr_time = time(NULL) - initialTime;
     toStringOperation(oper, stringOperation);
-    fprintf(stdout, "%d ; %d ; %ld ; %d ; %d ; %s\n", i, pid, tid, duration, place, stringOperation);
+    fprintf(stdout, "%d ; %d ; %d ; %ld ; %d ; %d ; %s\n", (int) (curr_time) ,i, pid, tid, duration, place, stringOperation);
     setbuf(stdout, NULL);
 }
