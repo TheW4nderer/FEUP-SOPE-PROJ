@@ -2,7 +2,7 @@
 
 Este projeto tem como objetivos desenvolver um programa multithread, promovendo a intercomunicação entre processos através de canais com nome (pipes ou FIFOs). É também importante evitar conflitos entre os processos, através de mecanismos de sincronização (a implementar na segunda parte do projeto).
 
-# Programa do utente (Un)
+## Programa do utente (Un)
 
 O programa do utente é responsável por efetuar os pedidos de utilização da casa de banho ao servidor (Qn) que os recolhe e processa.
 Numa fase inicial, recolhe os argumentos da linha de comandos (número de segundos de execução e nome do FIFO público através do qual se comunica com o servidor).
@@ -16,7 +16,7 @@ Cada thread é responsável por um pedido, executando os seguintes passos:
 - Em caso de aceitação do servidor, deve ser mostrado no ecrã a informação do pedido (IAMIN).
 - No final, a thread fecha o FIFO e destrói o mesmo.
 
-## Programa do servidos (Qn)
+## Programa do servidor (Qn)
 
 Tal como especificado no enunciado, o programa do servidor lança threads para cada pedido dos clientes.
 Cada thread é responsável por executar o seguinte conjunto de passos:
