@@ -41,6 +41,7 @@ void toStringOperation(operation oper, char res[]){
 
 }
 
+
 void display(int i, int pid, long tid, int duration, int place, operation oper){
     char stringOperation[BUFLENGHT];
     long curr_time = time(NULL) - initialTime;
