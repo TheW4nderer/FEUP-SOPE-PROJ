@@ -51,7 +51,6 @@ void * thr_func(void* arg){
         duration = -1;
         curr_place = -1;
         sprintf(message ,"[%d, %d, %ld, %d, %d]", seq, getpid(), (long) pthread_self(), duration, curr_place);
-        printf("%s\n", message);
         display(seq, getpid(), (long) pthread_self(), -1, -1, TOOLATE);
     }    
     write(fd_private, &message, BUFLENGHT);
