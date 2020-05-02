@@ -26,7 +26,7 @@ void * thr_func(void* arg){
 
 
     sscanf(msg, "[ %d, %d, %ld, %d, %d]", &seq, &pid, &tid, &duration, &place_rcv);
-    display(seq, pid, tid, duration, curr_place, RECVD);
+    display(seq, pid, tid, duration, -1, RECVD);
 
     sprintf(pids, "%d", pid);
     strcat(fifoname, pids);
@@ -41,9 +41,9 @@ void * thr_func(void* arg){
 
     char message[BUFLENGHT];
     if ((double) (elapsedTime() + duration * 1e-3) < (double) nsecs){
-        sprintf(message, "[%d, %d, %ld, %d, %d]", seq, getpid(), pthread_self(), duration, curr_place++);
+        sprintf(message, "[%d, %d, %ld, %d, %d]", seq, getpid(), pthread_self(), duration, curr_place);
         display(seq, pid,tid, duration, curr_place, ENTER);
-        
+        curr_place++;
     }
     else{ 
         closed = 1;
