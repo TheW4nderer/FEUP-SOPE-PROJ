@@ -31,14 +31,13 @@ int closed = 0;
 
 void * thr_func(void* arg){
     char* fifo = (char *) arg;
-    int duration = rand() % 500 +1; //duration between [1, 50]
+    int duration = rand() % 20 + 1; //duration between [1, 50]
     int fd = open(fifo, O_WRONLY);
     if (fd == -1) 
     {
         closed = 1;
-        display(sequential, getpid(), pthread_self(), duration, -1, FAILD);
+        display(sequential, getpid(), pthread_self(), duration, -1, CLOSD);
         return NULL;
-
     }    
     
     char message[BUFLENGHT];

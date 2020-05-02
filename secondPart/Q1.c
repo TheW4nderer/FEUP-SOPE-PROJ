@@ -15,7 +15,6 @@
 
 int nsecs;
 int curr_place = 1;
-//int sequential = 0;
 
 void * thr_func(void* arg){
     int seq, pid, duration;
