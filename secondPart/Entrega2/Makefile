@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS = -Wall -pthread
-DEPS = utils.h timer.h
+DEPS = utils.h timer.h queue.h
 OBJ = utils.o timer.o
 TARGETS = U2 Q2
 

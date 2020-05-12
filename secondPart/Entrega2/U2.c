@@ -36,7 +36,7 @@ void * thr_func(void* arg){
     if (fd == -1) 
     {
         closed = 1;
-        display(sequential, getpid(), pthread_self(), duration, -1, FAILD);
+        display(sequential, getpid(), pthread_self(), duration, -1, CLOSD);
         return NULL;
 
     }    
@@ -78,7 +78,6 @@ void * thr_func(void* arg){
 
     if (duration == -1 && idPlace == -1){ 
         display(num, pid, tid, duration, idPlace, CLOSD); //Casa de banho fechada
-        closed = 1;
     }    
 
     else display(num, pid, tid, duration, idPlace, IAMIN);

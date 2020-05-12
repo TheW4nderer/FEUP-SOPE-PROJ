@@ -7,12 +7,21 @@
 
 typedef enum {IWANT, RECVD, ENTER, IAMIN, TIMUP, TOOLATE, CLOSD, FAILD, GAVUP} operation;
 
-typedef struct{
+struct server_args {
     unsigned int nsecs;
     int nplaces;
     int nthreads;
     char fifoname[BUFLENGHT];
-} server_args;
+};
+
+struct client_args {
+    unsigned int nsecs;
+    char fifoname[BUFLENGHT];
+};
+
+struct server_args checkServerArgs(int argc, char* argv[]);
+
+struct client_args checkClientArgs(int argc, char* argv[]);
 
 void initializeTime();
 
