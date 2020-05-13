@@ -22,7 +22,6 @@ double elapsed_time;
 void checkArgumentsArray(char** args, int numArgs){
     nsecs = atoi(args[2]);
     strcpy(fifoname, args[3]);
-    //fifoname é o canal publico
 }
 
 int sequential = 1;
@@ -31,12 +30,12 @@ int closed = 0;
 
 void * thr_func(void* arg){
     char* fifo = (char *) arg;
-    int duration = rand() % 500 +1; //duration between [1, 50]
+    int duration = rand() % 50 +1; //duration between [1, 50]
     int fd = open(fifo, O_WRONLY);
     if (fd == -1) 
     {
         closed = 1;
-        display(sequential, getpid(), pthread_self(), duration, -1, CLOSD);
+        display(sequential, getpid(), pthread_self(), -1, -1, CLOSD);
         return NULL;
 
     }    
@@ -111,7 +110,7 @@ int main(int argc, char* argv[]) {
     while ((double) elapsedTime() < (double) nsecs){
         pthread_create(&thread, NULL, thr_func, &fifo);
         pthread_detach(thread);
-        usleep(20000); //tempo em ms
+        usleep(10000); //tempo em ms
         t++;
         sequential++;
         if (closed) break;

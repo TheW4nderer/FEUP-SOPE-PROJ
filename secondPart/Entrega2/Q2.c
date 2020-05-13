@@ -27,13 +27,11 @@ sem_t maxThreads;
 sem_t maxPlaces;
 
 void * thr_func(void* arg){
-    //pthread_detach(pthread_self());
     int seq, pid, duration;
     long tid;
     char msg[BUFLENGHT] , pids[BUFLENGHT], tids[BUFLENGHT], fifoname[BUFLENGHT] = "/tmp/";
     strcpy(msg, (char*) arg);
     int fd_private;
-    //int closed = 0, place_rcv;
     int place_rcv;
     int place;
 
@@ -127,9 +125,6 @@ int main(int argc, char* argv[]){
     if (args.nplaces != 0) places_limited = 1;
     if (args.nthreads != 0) threads_limited = 1;
 
-    printf("%d\n", args.nsecs);
-    printf("%d\n", places_limited);
-    printf("%d\n", threads_limited);
 
 
     if (places_limited){
@@ -173,6 +168,7 @@ int main(int argc, char* argv[]){
     while ((read(fd, &public_msg, BUFLENGHT) > 0 && public_msg[0] == '[')){
         if (threads_limited) sem_wait(&maxThreads);
         pthread_create(&tid, NULL, thr_func,  &public_msg);
+        pthread_detach(tid);
         printf("iteration\n");
     }
 
