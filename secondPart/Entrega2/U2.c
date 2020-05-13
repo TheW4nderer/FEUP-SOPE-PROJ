@@ -10,34 +10,22 @@
 #include "timer.h"
 #include "utils.h"
 
-
-
 #define BUFLENGHT 256
 
-int nsecs;
-char fifoname[BUFLENGHT];
+struct client_args args;
 double elapsed_time;
-
-
-void checkArgumentsArray(char** args, int numArgs){
-    nsecs = atoi(args[2]);
-    strcpy(fifoname, args[3]);
-}
 
 int sequential = 1;
 int closed = 0;
 
-
 void * thr_func(void* arg){
     char* fifo = (char *) arg;
-    int duration = rand() % 50 +1; //duration between [1, 50]
+    int duration = rand() % 200 + 50; //duration between [1, 50]
     int fd = open(fifo, O_WRONLY);
-    if (fd == -1) 
-    {
+    if (fd == -1) {
         closed = 1;
         display(sequential, getpid(), pthread_self(), -1, -1, CLOSD);
         return NULL;
-
     }    
     
     char message[BUFLENGHT];
@@ -64,59 +52,43 @@ void * thr_func(void* arg){
     int fd_fifo = open(pfifo, O_RDONLY);
     
     if (fd_fifo < 0) return NULL;
-    char server_message[BUFLENGHT];
 
-    int num, pid;
-    long tid;
+    char server_message[BUFLENGHT];
     if(read(fd_fifo, &server_message, BUFLENGHT) < 0){
         display(sequential, getpid(), pthread_self(), duration, -1, FAILD);
     }
 
-
+    int num, pid;
+    long tid;
     sscanf(server_message, "[%d, %d, %ld, %d, %d]", &num, &pid, &tid, &duration, &idPlace);
 
-    if (duration == -1 && idPlace == -1){ 
-        display(num, pid, tid, duration, idPlace, CLOSD); //Casa de banho fechada
-    }    
-
+    if (duration == -1 && idPlace == -1) display(num, pid, tid, duration, idPlace, CLOSD); //Casa de banho fechada
     else display(num, pid, tid, duration, idPlace, IAMIN);
 
     close(fd_fifo);
-
     unlink(pfifo);
-
     return NULL;
-
 }
 
 
 int main(int argc, char* argv[]) {
-    checkArgumentsArray(argv, argc);
-
+    args = checkClientArgs(argc, argv);
     startClock();
 
     pthread_t thread;
     int t = 0;
 
-    char fifo[BUFLENGHT] = "";
-    strcat(fifo ,fifoname);
-
     srand(time(NULL));
     initializeTime();
 
-    nsecs = atoi(argv[2]);
-
-
-    while ((double) elapsedTime() < (double) nsecs){
-        pthread_create(&thread, NULL, thr_func, &fifo);
+    while ((double) elapsedTime() < (double) args.nsecs){
+        pthread_create(&thread, NULL, thr_func, &args.fifoname);
         pthread_detach(thread);
-        usleep(10000); //tempo em ms
+        usleep(10 * 1000); //tempo em ms
         t++;
         sequential++;
         if (closed) break;
-
     }
 
     return 0;
-    
 }

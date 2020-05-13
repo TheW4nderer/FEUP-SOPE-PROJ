@@ -16,13 +16,12 @@
 #define MAX_THREADS 100
 
 struct server_args args;
-place_queue pq;
-int curr_place = 1;
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-
 int places_limited = 0;
 int threads_limited = 0;
+int curr_place = 1;
 
+place_queue pq;
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 sem_t maxThreads;
 sem_t maxPlaces;
 
@@ -30,12 +29,11 @@ void * thr_func(void* arg){
     int seq, pid, duration;
     long tid;
     char msg[BUFLENGHT] , pids[BUFLENGHT], tids[BUFLENGHT], fifoname[BUFLENGHT] = "/tmp/";
-    strcpy(msg, (char*) arg);
     int fd_private;
     int place_rcv;
     int place;
 
-
+    strcpy(msg, (char*) arg);
     sscanf(msg, "[ %d, %d, %ld, %d, %d]", &seq, &pid, &tid, &duration, &place_rcv);
     display(seq, pid, tid, duration, place_rcv, RECVD);
 
@@ -46,38 +44,33 @@ void * thr_func(void* arg){
     strcat(fifoname, tids);
     
     if ((fd_private = open(fifoname, O_WRONLY)) < 0){
-        printf("Cheguei\n");
         display(seq, pid, tid, -1, -1, GAVUP);
         if (threads_limited) sem_post(&maxThreads);
-        printf("RETURN NULL\n");
         return NULL;
     }
 
-    if (places_limited) {
+    if (places_limited) {  //sem places_limited deveria usar na mesma o sem mas com valor INT_MAX (?)
         sem_wait(&maxPlaces);
         pthread_mutex_lock(&mutex);
         place = usePlace(&pq);
         pthread_mutex_unlock(&mutex);
     }   
-
     else {
         pthread_mutex_lock(&mutex);
         place = curr_place;
         curr_place++;
         pthread_mutex_unlock(&mutex);
-
     }
 
     char message[BUFLENGHT];
-    if ((double) (elapsedTime() + duration * 1e-3) < (double) args.nsecs){
+    if ((double) (elapsedTime() + duration * 1e-3) < (double) args.nsecs) {
         sprintf(message, "[%d, %d, %ld, %d, %d]", seq, getpid(), pthread_self(), duration, place);
-        display(seq, pid,tid, duration, place, ENTER);
-        
+        display(seq, pid, tid, duration, place, ENTER);
     }
     else{ 
         duration = -1;
         place = -1;
-        sprintf(message ,"[%d, %d, %ld, %d, %d]", seq, getpid(), (long) pthread_self(), duration, place);
+        sprintf(message, "[%d, %d, %ld, %d, %d]", seq, getpid(), (long) pthread_self(), duration, place);
         display(seq, getpid(), (long) pthread_self(), -1, -1, TOOLATE);
     }    
 
@@ -96,7 +89,7 @@ void * thr_func(void* arg){
 
     if (close(fd_private) < 0) return NULL;
 
-    usleep(duration*1000);
+    usleep(duration * 1000);
     if (duration != -1 && place != -1) display(seq, getpid(), pthread_self(), duration, place, TIMUP);
     close(fd_private);
 
@@ -107,25 +100,18 @@ void * thr_func(void* arg){
         pthread_mutex_unlock(&mutex);
         sem_post(&maxPlaces);
     }
-
     return NULL;
 }
 
 
 int main(int argc, char* argv[]){
-
     int fd;
     pthread_t tid;
     startClock();
     initializeTime();
-
     args = checkServerArgs(argc, argv);
-    
-    
     if (args.nplaces != 0) places_limited = 1;
     if (args.nthreads != 0) threads_limited = 1;
-
-
 
     if (places_limited){
         sem_init(&maxPlaces, 0, args.nplaces);
@@ -139,7 +125,6 @@ int main(int argc, char* argv[]){
 
     srand(time(NULL));
 
-
     if (mkfifo(args.fifoname, 0660) < 0){
         printf("Error creating fifo\n");
     }
@@ -150,9 +135,7 @@ int main(int argc, char* argv[]){
         exit(2);
     }
 
-
     char public_msg[BUFLENGHT];
-
     while(elapsedTime() < args.nsecs){
         if (read(fd, &public_msg, BUFLENGHT) > 0 && public_msg[0] == '['){
             if (threads_limited) sem_wait(&maxThreads);
@@ -169,9 +152,7 @@ int main(int argc, char* argv[]){
         if (threads_limited) sem_wait(&maxThreads);
         pthread_create(&tid, NULL, thr_func,  &public_msg);
         pthread_detach(tid);
-        printf("iteration\n");
     }
 
-    exit(0);
-
+    return 0;
 }
